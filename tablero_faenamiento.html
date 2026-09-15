@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="es-EC">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tablero Faenamiento Porcino</title>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<style>
+:root{
+  --c-fondo:#f2f4f7; --c-panel:#ffffff; --c-panel-2:#f7f8fa; --c-texto:#1c2430; --c-texto-sub:#5b6572;
+  --c-borde:#e0e4ea; --c-base:#2563eb; --c-base-2:#1d4ed8; --c-acento:#dc2626; --c-positivo:#16a34a;
+  --c-neutro:#8a94a3; --c-amarillo:#d97706; --sombra:0 1px 3px rgba(20,25,35,.08),0 1px 2px rgba(20,25,35,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --c-fondo:#0f1420; --c-panel:#171e2c; --c-panel-2:#1d2536; --c-texto:#e7ebf2; --c-texto-sub:#98a2b3;
+    --c-borde:#2a3345; --c-base:#5b8cff; --c-base-2:#7ba1ff; --c-acento:#f0605a; --c-positivo:#3ddc84;
+    --c-neutro:#7c8798; --c-amarillo:#f0a83c; --sombra:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --c-fondo:#0f1420; --c-panel:#171e2c; --c-panel-2:#1d2536; --c-texto:#e7ebf2; --c-texto-sub:#98a2b3;
+  --c-borde:#2a3345; --c-base:#5b8cff; --c-base-2:#7ba1ff; --c-acento:#f0605a; --c-positivo:#3ddc84;
+  --c-neutro:#7c8798; --c-amarillo:#f0a83c; --sombra:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--c-fondo);color:var(--c-texto);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;padding-bottom:env(safe-area-inset-bottom,0px);}
+.wrap{max-width:1400px;margin:0 auto;padding:16px 20px 40px;}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;padding:calc(16px + env(safe-area-inset-top,0px)) 20px 4px;max-width:1400px;margin:0 auto;}
+header.top h1{font-size:20px;margin:0 0 2px;}
+header.top p{margin:0;color:var(--c-texto-sub);font-size:12.5px;}
+.top-actions{display:flex;gap:8px;align-items:center;}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--c-borde);background:var(--c-panel);color:var(--c-texto);padding:8px 12px;transition:background .15s;}
+button:hover{background:var(--c-panel-2);}
+button.primary{background:var(--c-base);border-color:var(--c-base);color:#fff;}
+button.primary:hover{background:var(--c-base-2);}
+#estado{font-size:12px;color:var(--c-texto-sub);margin-top:4px;}
+#estado.error{color:var(--c-acento);font-weight:600;}
+#estado.ok{color:var(--c-positivo);}
+
+.panel{background:var(--c-panel);border:1px solid var(--c-borde);border-radius:12px;box-shadow:var(--sombra);padding:16px;}
+.filtros{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px;}
+.filtro-grupo label{display:block;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--c-texto-sub);margin-bottom:6px;}
+.filtro-grupo input[type="date"],.filtro-grupo input[type="number"],.filtro-grupo select{width:100%;padding:7px 8px;border-radius:7px;border:1px solid var(--c-borde);background:var(--c-panel-2);color:var(--c-texto);font:inherit;}
+.rango-fecha{display:flex;gap:6px;align-items:center;}
+.rango-personal{display:flex;gap:6px;align-items:center;}
+.rango-personal input{width:70px;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{padding:5px 10px;border-radius:999px;border:1px solid var(--c-borde);background:var(--c-panel-2);color:var(--c-texto-sub);font-size:12px;cursor:pointer;user-select:none;transition:.15s;}
+.chip.activo{background:var(--c-base);border-color:var(--c-base);color:#fff;}
+.filtros-footer{display:flex;justify-content:flex-end;margin-bottom:20px;}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px;}
+.kpi{background:var(--c-panel);border:1px solid var(--c-borde);border-radius:12px;box-shadow:var(--sombra);padding:12px 14px;position:relative;overflow:hidden;}
+.kpi .barra{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c-neutro);}
+.kpi.ok .barra{background:var(--c-positivo);}
+.kpi.warn .barra{background:var(--c-amarillo);}
+.kpi.bad .barra{background:var(--c-acento);}
+.kpi .label{font-size:11px;color:var(--c-texto-sub);text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px;}
+.kpi .valor{font-size:22px;font-weight:700;line-height:1.1;}
+.kpi .sub{font-size:11px;color:var(--c-texto-sub);margin-top:4px;}
+
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.charts-grid .full{grid-column:1/-1;}
+.chart-card{background:var(--c-panel);border:1px solid var(--c-borde);border-radius:12px;box-shadow:var(--sombra);padding:12px;}
+.chart-card h3{margin:2px 8px 4px;font-size:13.5px;color:var(--c-texto);}
+.chart-card .plot{width:100%;height:360px;}
+.chart-card .plot.tall{height:420px;}
+.msg-vacio{padding:40px;text-align:center;color:var(--c-texto-sub);}
+
+footer{margin-top:28px;color:var(--c-texto-sub);font-size:11.5px;text-align:center;}
+@media (max-width:900px){ .charts-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div>
+    <h1>Tablero de Faenamiento Porcino</h1>
+    <p>Producción en línea · datos en vivo desde Google Sheets</p>
+    <div id="estado">Cargando datos…</div>
+  </div>
+  <div class="top-actions">
+    <button id="btnTema" title="Cambiar tema">🌓 Tema</button>
+    <button id="btnRecargar" class="primary" title="Recargar datos">↻ Actualizar datos</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="panel filtros-panel">
+    <div class="filtros">
+      <div class="filtro-grupo">
+        <label>Rango de fecha</label>
+        <div class="rango-fecha">
+          <input type="date" id="fFechaIni">
+          <input type="date" id="fFechaFin">
+        </div>
+      </div>
+      <div class="filtro-grupo">
+        <label>Línea</label>
+        <select id="fLinea"></select>
+      </div>
+      <div class="filtro-grupo">
+        <label>Dotación (personal): <span id="fPersonalEtq"></span></label>
+        <div class="rango-personal">
+          <input type="number" id="fPersonalMin"> a
+          <input type="number" id="fPersonalMax">
+        </div>
+      </div>
+      <div class="filtro-grupo">
+        <label>Estándar (cerdos/hora)</label>
+        <input type="number" id="fEstandar" min="1" step="1" value="40">
+      </div>
+      <div class="filtro-grupo" style="grid-column:1/-1;">
+        <label>Artículo</label>
+        <div class="chips" id="fArticulos"></div>
+      </div>
+    </div>
+    <div class="filtros-footer">
+      <button id="btnReset">Restablecer filtros</button>
+    </div>
+  </section>
+
+  <section class="kpi-grid" id="kpiGrid"></section>
+
+  <section class="charts-grid" id="chartsGrid">
+    <div class="chart-card full">
+      <h3>Cascada de pérdidas — del potencial teórico a la producción buena</h3>
+      <div id="chCascada" class="plot"></div>
+    </div>
+    <div class="chart-card full">
+      <h3>Tendencia semanal de velocidad</h3>
+      <div id="chTendencia" class="plot tall"></div>
+    </div>
+    <div class="chart-card full">
+      <h3>Carta de control — velocidad neta por turno</h3>
+      <div id="chControl" class="plot tall"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Pareto de paradas</h3>
+      <div id="chPareto" class="plot"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Dotación vs. velocidad</h3>
+      <div id="chDotacion" class="plot"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Velocidad vs. tasa de defectos</h3>
+      <div id="chDefectos" class="plot"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Mapa de calor — cerdos/hora por semana y día</h3>
+      <div id="chHeatmap" class="plot"></div>
+    </div>
+  </section>
+
+  <footer>
+    Fuente: Google Sheets vía Apps Script · Estándar nominal configurable (base 40 cerdos/hora) · <span id="footTurnos"></span>
+  </footer>
+</div>
+
+<script>
+'use strict';
+
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbye4zCz3TDwo_Mw50MwPyWpyPVqUgisqRAD1uHX5VswovtD7MwhYuqkAL5jWi1-yxh-Eg/exec';
+const DIAS_ES = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const ORDEN_DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+const nfEnt = new Intl.NumberFormat('es-EC',{maximumFractionDigits:0});
+const nfDec = new Intl.NumberFormat('es-EC',{maximumFractionDigits:1,minimumFractionDigits:1});
+const nfPct = new Intl.NumberFormat('es-EC',{maximumFractionDigits:1,minimumFractionDigits:1});
+
+function numero(v,dec){ if(v===null||v===undefined||isNaN(v)) return 'sin dato'; return dec>=1 ? nfDec.format(v) : nfEnt.format(v); }
+function porcentaje(v){ if(v===null||v===undefined||isNaN(v)) return 'sin dato'; return nfPct.format(v*100)+'%'; }
+function safeDiv(a,b){ return (b && b>0) ? a/b : null; }
+function suma(arr,f){ return arr.reduce((s,t)=>s+(f(t)||0),0); }
+function media(arr,f){ if(!arr.length) return null; return suma(arr,f)/arr.length; }
+function num(v){ if(v===undefined||v===null||v==='') return 0; const n = typeof v==='number'? v : parseFloat(String(v).replace(',','.')); return isNaN(n)?0:n; }
+function norm(s){ return (s===undefined||s===null?'':String(s)).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim().toUpperCase(); }
+
+function parseFechaISO(v){
+  if(!v) return null;
+  const s = String(v);
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m){ const dt = new Date(s); if(isNaN(dt)) return null; m = [null,String(dt.getFullYear()),String(dt.getMonth()+1).padStart(2,'0'),String(dt.getDate()).padStart(2,'0')]; }
+  const y=+m[1], mo=+m[2], d=+m[3];
+  return { iso:`${m[1]}-${m[2]}-${m[3]}`, y, mo, d, dateObj:new Date(y,mo-1,d) };
+}
+
+function isoSemana(dateObj){
+  const dt = new Date(Date.UTC(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()));
+  const dayNum = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+  return Math.ceil((((dt - yearStart) / 86400000) + 1) / 7);
+}
+
+const CANDS = {
+  fecha: ['FECHA DE PROCESO','FECHA_PROCESO','FECHA'],
+  semana: ['SEMANA'],
+  linea: ['LINEA PRODUCCION','LAN','LINEA'],
+  articulo: ['DESCRIPCION ARTICULO','DESCRIPCION\nARTICULO','ARTICULO'],
+  personal: ['CANTIDAD DE PERSONAL','PERSONAL','DOTACION'],
+  cerdos: ['CANTIDAD DE CERDOS','CERDOS'],
+  buenos: ['BUENOS'],
+  defectos: ['UNIDADES CON DEFECTOS PROCESO','DEFECTOS (UNID_DEF_PROCESO)','DEFECTOS_PROCESO'],
+  kg: ['KILOGRAMOS EN PIE','KG_PROCESADO','KILOGRAMOS PROCESADOS'],
+  horasProd: ['HORAS PRODUCTIVAS','HORAS_PRODUCTIVAS'],
+  horasProg: ['HORAS PROGRAMADAS','HORAS_PROGRAMADAS'],
+  parasNoPlan: ['HORAS DE PARAS NO PLANIFICADAS','HORAS PARAS NOPLAN','HORAS_PARAS_NOPLAN'],
+  parasPlan: ['HORAS DE PARAS PLANIFICADAS','HORAS PARAS PLAN','HORAS_PARAS_PLAN'],
+  motivos: ['MOTIVOS DE PARADAS','MOTIVOS']
+};
+
+function buildKeyIndex(row){
+  const idx = {};
+  Object.keys(row).forEach(k => { idx[norm(k)] = k; });
+  return idx;
+}
+function pick(row, idx, candidatosNorm){
+  for(const c of candidatosNorm.map(norm)){ if(idx[c]!==undefined) return row[idx[c]]; }
+  const keys = Object.keys(idx);
+  for(const c of candidatosNorm.map(norm)){ const fk = keys.find(k=>k.includes(c)); if(fk) return row[idx[fk]]; }
+  return undefined;
+}
+
+function mapearTurnos(raw){
+  if(!Array.isArray(raw) || raw.length===0) return [];
+  const idx = buildKeyIndex(raw[0]);
+  const out = [];
+  for(const row of raw){
+    const fechaInfo = parseFechaISO(pick(row, idx, CANDS.fecha));
+    if(!fechaInfo) continue;
+    const cerdos = num(pick(row, idx, CANDS.cerdos));
+    const defectosProceso = num(pick(row, idx, CANDS.defectos));
+    const buenosRaw = pick(row, idx, CANDS.buenos);
+    const buenos = buenosRaw!==undefined && buenosRaw!=='' ? num(buenosRaw) : Math.max(0, cerdos - defectosProceso);
+    const motivosRaw = pick(row, idx, CANDS.motivos);
+    const motivos = motivosRaw ? String(motivosRaw).split(/[,;/]+/).map(s=>s.trim()).filter(Boolean) : [];
+    let semana = Math.round(num(pick(row, idx, CANDS.semana)));
+    if(!semana) semana = isoSemana(fechaInfo.dateObj);
+    out.push({
+      fecha: fechaInfo.iso,
+      fechaObj: fechaInfo.dateObj,
+      semana,
+      dia: DIAS_ES[fechaInfo.dateObj.getDay()],
+      linea: (pick(row, idx, CANDS.linea) || 'Sin línea').toString().trim() || 'Sin línea',
+      articulo: (pick(row, idx, CANDS.articulo) || 'Sin artículo').toString().trim() || 'Sin artículo',
+      personal: num(pick(row, idx, CANDS.personal)),
+      cerdos,
+      buenos,
+      defectosProceso,
+      kgProcesado: num(pick(row, idx, CANDS.kg)),
+      horasProductivas: num(pick(row, idx, CANDS.horasProd)),
+      horasProgramadas: num(pick(row, idx, CANDS.horasProg)),
+      parasNoPlanificadas: num(pick(row, idx, CANDS.parasNoPlan)),
+      parasPlanificadas: num(pick(row, idx, CANDS.parasPlan)),
+      motivos
+    });
+  }
+  return out;
+}
+
+let turnosRaw = [];
+let meta = {};
+let filtros = {};
+
+async function cargarDatos(){
+  setEstado('Cargando datos…', '');
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, { cache:'no-store' });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    let data;
+    const txt = await res.text();
+    try{ data = JSON.parse(txt); } catch(e){ throw new Error('la respuesta no es JSON válido'); }
+    if(data && !Array.isArray(data) && Array.isArray(data.data)) data = data.data;
+    const mapeados = mapearTurnos(data);
+    turnosRaw = mapeados.filter(t => t.cerdos > 0 && t.horasProductivas > 0);
+    if(turnosRaw.length === 0){ setEstado('⚠️ Sin datos válidos (cerdos>0 y horas productivas>0) en la fuente.', 'error'); return; }
+    inicializarMeta();
+    llenarFiltros();
+    actualizar();
+    const ahora = new Date().toLocaleString('es-EC');
+    setEstado(`✅ Datos actualizados: ${ahora} · ${turnosRaw.length} turnos cargados`, 'ok');
+  }catch(e){
+    setEstado(`❌ Error cargando datos: ${e.message}. Verifica que el Apps Script esté publicado con acceso "Cualquier usuario" y que la URL sea correcta.`, 'error');
+  }
+}
+
+function setEstado(msg, tipo){
+  const el = document.getElementById('estado');
+  el.textContent = msg;
+  el.className = tipo || '';
+}
+
+function inicializarMeta(){
+  const fechas = turnosRaw.map(t=>t.fecha).sort();
+  const personales = turnosRaw.map(t=>t.personal).filter(p=>p>0);
+  meta = {
+    fechaMin: fechas[0], fechaMax: fechas[fechas.length-1],
+    personalMin: personales.length? Math.min(...personales):0,
+    personalMax: personales.length? Math.max(...personales):0,
+    lineas: [...new Set(turnosRaw.map(t=>t.linea))].sort(),
+    articulos: [...new Set(turnosRaw.map(t=>t.articulo))].sort()
+  };
+  filtros = {
+    fechaInicio: meta.fechaMin, fechaFin: meta.fechaMax,
+    linea: 'Todas',
+    personalMin: meta.personalMin, personalMax: meta.personalMax,
+    articulosActivos: new Set(meta.articulos),
+    estandar: 40
+  };
+}
+
+function llenarFiltros(){
+  document.getElementById('fFechaIni').min = meta.fechaMin;
+  document.getElementById('fFechaIni').max = meta.fechaMax;
+  document.getElementById('fFechaIni').value = filtros.fechaInicio;
+  document.getElementById('fFechaFin').min = meta.fechaMin;
+  document.getElementById('fFechaFin').max = meta.fechaMax;
+  document.getElementById('fFechaFin').value = filtros.fechaFin;
+
+  const selLinea = document.getElementById('fLinea');
+  selLinea.innerHTML = '<option value="Todas">Todas</option>' + meta.lineas.map(l=>`<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  selLinea.value = filtros.linea;
+
+  document.getElementById('fPersonalMin').min = meta.personalMin;
+  document.getElementById('fPersonalMin').max = meta.personalMax;
+  document.getElementById('fPersonalMin').value = filtros.personalMin;
+  document.getElementById('fPersonalMax').min = meta.personalMin;
+  document.getElementById('fPersonalMax').max = meta.personalMax;
+  document.getElementById('fPersonalMax').value = filtros.personalMax;
+  document.getElementById('fPersonalEtq').textContent = `${meta.personalMin}–${meta.personalMax}`;
+
+  document.getElementById('fEstandar').value = filtros.estandar;
+
+  const cont = document.getElementById('fArticulos');
+  cont.innerHTML = '';
+  meta.articulos.forEach(a=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip activo';
+    chip.textContent = a;
+    chip.addEventListener('click', ()=>{
+      if(filtros.articulosActivos.has(a)) filtros.articulosActivos.delete(a); else filtros.articulosActivos.add(a);
+      chip.classList.toggle('activo');
+      actualizar();
+    });
+    cont.appendChild(chip);
+  });
+}
+
+function escHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function leerFiltrosDeUI(){
+  filtros.fechaInicio = document.getElementById('fFechaIni').value || meta.fechaMin;
+  filtros.fechaFin = document.getElementById('fFechaFin').value || meta.fechaMax;
+  filtros.linea = document.getElementById('fLinea').value;
+  let pMin = num(document.getElementById('fPersonalMin').value);
+  let pMax = num(document.getElementById('fPersonalMax').value);
+  if(pMin > pMax){ const t=pMin; pMin=pMax; pMax=t; }
+  filtros.personalMin = pMin; filtros.personalMax = pMax;
+  document.getElementById('fPersonalEtq').textContent = `${pMin}–${pMax}`;
+  filtros.estandar = Math.max(1, num(document.getElementById('fEstandar').value) || 40);
+}
+
+function aplicarFiltros(){
+  return turnosRaw.filter(t=>
+    t.fecha >= filtros.fechaInicio && t.fecha <= filtros.fechaFin &&
+    (filtros.linea === 'Todas' || t.linea === filtros.linea) &&
+    t.personal >= filtros.personalMin && t.personal <= filtros.personalMax &&
+    filtros.articulosActivos.has(t.articulo)
+  );
+}
+
+function calcularKPIs(turnos, estandar){
+  const n = turnos.length;
+  if(n===0) return null;
+  const sumCerdos = suma(turnos, t=>t.cerdos);
+  const sumBuenos = suma(turnos, t=>t.buenos);
+  const sumDefectos = suma(turnos, t=>t.defectosProceso);
+  const sumHorasProd = suma(turnos, t=>t.horasProductivas);
+  const sumHorasProg = suma(turnos, t=>t.horasProgramadas);
+  const sumParasNoPlan = suma(turnos, t=>t.parasNoPlanificadas);
+  const sumParasPlan = suma(turnos, t=>t.parasPlanificadas);
+  const sumKg = suma(turnos, t=>t.kgProcesado);
+  const hh = suma(turnos, t=>t.personal * t.horasProductivas);
+
+  const velocidadNeta = safeDiv(sumCerdos, sumHorasProd);
+  const velocidadBruta = safeDiv(sumCerdos, sumHorasProg);
+  const ritmo = velocidadNeta!==null ? velocidadNeta/estandar : null;
+
+  const tPlanificado = sumHorasProg - sumParasPlan;
+  const tReal = tPlanificado - sumParasNoPlan;
+  const disponibilidad = tPlanificado > 0 ? Math.min(1, tReal/tPlanificado) : null;
+
+  const rendimientoCerdos = (estandar>0 && sumHorasProd>0) ? sumCerdos/(estandar*sumHorasProd) : null;
+  const calidad = safeDiv(sumBuenos, sumCerdos);
+  const pesoProm = safeDiv(sumKg, sumCerdos);
+  const oee = (disponibilidad!==null && ritmo!==null && calidad!==null) ? disponibilidad*ritmo*calidad : null;
+  const kilosHora = safeDiv(sumKg, sumHorasProd);
+  const kilosHH = safeDiv(sumKg, hh);
+  const dotacionProm = media(turnos.filter(t=>t.personal>0), t=>t.personal);
+
+  return { n, sumCerdos, sumBuenos, sumDefectos, sumHorasProd, sumHorasProg, sumParasNoPlan, sumParasPlan, sumKg, hh,
+    velocidadNeta, velocidadBruta, ritmo, disponibilidad, rendimientoCerdos, calidad, pesoProm, oee, kilosHora, kilosHH, dotacionProm };
+}
+
+function claseAlerta(valor, bueno, medio){
+  if(valor===null||valor===undefined) return '';
+  if(valor >= bueno) return 'ok';
+  if(valor >= medio) return 'warn';
+  return 'bad';
+}
+
+function renderKPIs(k, estandar){
+  const grid = document.getElementById('kpiGrid');
+  if(!k){ grid.innerHTML = '<div class="msg-vacio" style="grid-column:1/-1;">Sin datos en este filtro</div>'; return; }
+  const cards = [
+    { label:'Cerdos procesados', valor: numero(k.sumCerdos,0), sub:`${k.n} turnos`, clase:'' },
+    { label:'Velocidad neta', valor: k.velocidadNeta!==null?numero(k.velocidadNeta,1)+' /h':'sin dato', sub:'cerdos / hora productiva', clase: claseAlerta(k.velocidadNeta, estandar, estandar*0.85) },
+    { label:'Velocidad bruta', valor: k.velocidadBruta!==null?numero(k.velocidadBruta,1)+' /h':'sin dato', sub:'cerdos / hora programada', clase:'' },
+    { label:'Cumplimiento estándar', valor: porcentaje(k.ritmo), sub:`meta 100% (base ${estandar}/h)`, clase: claseAlerta(k.ritmo, 1.0, 0.85) },
+    { label:'Disponibilidad (OEE)', valor: porcentaje(k.disponibilidad), sub:'tiempo real / planificado', clase: claseAlerta(k.disponibilidad, 0.90, 0.80) },
+    { label:'Rendimiento de cerdos', valor: porcentaje(k.rendimientoCerdos), sub:'meta > 80%', clase: claseAlerta(k.rendimientoCerdos, 0.80, 0.65) },
+    { label:'Peso promedio', valor: k.pesoProm!==null?numero(k.pesoProm,1)+' kg':'sin dato', sub:'kg en pie / cerdo', clase:'' },
+    { label:'Calidad de proceso', valor: porcentaje(k.calidad), sub:'meta > 97%', clase: claseAlerta(k.calidad, 0.97, 0.90) },
+    { label:'OEE', valor: porcentaje(k.oee), sub:'disponibilidad × ritmo × calidad', clase: claseAlerta(k.oee, 0.85, 0.65) },
+    { label:'Kilos por hora', valor: k.kilosHora!==null?numero(k.kilosHora,0)+' kg/h':'sin dato', sub:'kg en pie / hora productiva', clase:'' },
+    { label:'Kilo h/h', valor: k.kilosHH!==null?numero(k.kilosHH,1)+' kg/hh':'sin dato', sub:'kg en pie / hora-hombre', clase:'' },
+    { label:'Dotación promedio', valor: k.dotacionProm!==null?numero(k.dotacionProm,1):'sin dato', sub:'personas / turno', clase:'' },
+  ];
+  grid.innerHTML = cards.map(c=>`
+    <div class="kpi ${c.clase}"><div class="barra"></div>
+      <div class="label">${c.label}</div>
+      <div class="valor">${c.valor}</div>
+      <div class="sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+function agrupar(arr, keyFn){
+  const map = new Map();
+  for(const it of arr){ const k = keyFn(it); if(!map.has(k)) map.set(k, []); map.get(k).push(it); }
+  return map;
+}
+
+function plotlyLayoutBase(){
+  const cs = getComputedStyle(document.body);
+  return {
+    font:{ color: cs.getPropertyValue('--c-texto').trim() || '#333', size:12 },
+    paper_bgcolor:'rgba(0,0,0,0)',
+    plot_bgcolor:'rgba(0,0,0,0)',
+    margin:{ l:50, r:40, t:20, b:40 },
+    xaxis:{ gridcolor: cs.getPropertyValue('--c-borde').trim(), zerolinecolor: cs.getPropertyValue('--c-borde').trim() },
+    yaxis:{ gridcolor: cs.getPropertyValue('--c-borde').trim(), zerolinecolor: cs.getPropertyValue('--c-borde').trim() }
+  };
+}
+const PLOTLY_CFG = { responsive:true, displaylogo:false };
+
+function colorVar(name){ return getComputedStyle(document.body).getPropertyValue(name).trim(); }
+
+function renderCascada(k, estandar){
+  const el = document.getElementById('chCascada');
+  if(!k){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin datos en este filtro</div>'; return; }
+  const potencial = estandar * k.sumHorasProg;
+  const perdidaParasPlan = estandar * k.sumParasPlan;
+  const perdidaParasNoPlan = estandar * k.sumParasNoPlan;
+  const tras = potencial - perdidaParasPlan - perdidaParasNoPlan;
+  const perdidaRitmo = tras - k.sumCerdos;
+  const perdidaDefectos = k.sumDefectos;
+
+  const trace = {
+    type:'waterfall',
+    orientation:'v',
+    x:['Potencial teórico','Paradas planificadas','Paradas no planificadas','Pérdida por ritmo','Defectos de proceso','Producción buena'],
+    measure:['absolute','relative','relative','relative','relative','total'],
+    y:[potencial, -perdidaParasPlan, -perdidaParasNoPlan, -perdidaRitmo, -perdidaDefectos, 0],
+    connector:{ line:{ color: colorVar('--c-borde') } },
+    decreasing:{ marker:{ color: colorVar('--c-acento') } },
+    increasing:{ marker:{ color: colorVar('--c-positivo') } },
+    totals:{ marker:{ color: colorVar('--c-base') } },
+    text: null,
+    textposition:'outside'
+  };
+  const layout = Object.assign(plotlyLayoutBase(), { yaxis:Object.assign(plotlyLayoutBase().yaxis,{title:'Cerdos'}) , showlegend:false });
+  Plotly.newPlot(el, [trace], layout, PLOTLY_CFG);
+}
+
+function renderTendencia(turnos, estandar){
+  const el = document.getElementById('chTendencia');
+  if(!turnos.length){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin datos en este filtro</div>'; return; }
+  const porSemana = agrupar(turnos, t=>t.semana);
+  const semanas = [...porSemana.keys()].sort((a,b)=>a-b);
+  const vNeta=[], vBruta=[], dotacion=[], colores=[];
+  semanas.forEach(s=>{
+    const grp = porSemana.get(s);
+    const sc = suma(grp,t=>t.cerdos), shp = suma(grp,t=>t.horasProductivas), shg = suma(grp,t=>t.horasProgramadas);
+    const vn = safeDiv(sc,shp), vb = safeDiv(sc,shg);
+    vNeta.push(vn); vBruta.push(vb); dotacion.push(media(grp,t=>t.personal));
+    colores.push(vn!==null && vn < estandar ? colorVar('--c-acento') : colorVar('--c-base'));
+  });
+  const xLabels = semanas.map(s=>`S${s}`);
+  const traceNeta = { x:xLabels, y:vNeta, type:'scatter', mode:'lines+markers', name:'Velocidad neta', line:{color:colorVar('--c-base'),width:3}, marker:{color:colores,size:7} };
+  const traceBruta = { x:xLabels, y:vBruta, type:'scatter', mode:'lines', name:'Velocidad bruta', line:{color:colorVar('--c-neutro'),dash:'dot',width:2} };
+  const traceDotacion = { x:xLabels, y:dotacion, type:'bar', name:'Dotación promedio', yaxis:'y2', marker:{color:colorVar('--c-neutro'),opacity:0.35} };
+  const base = plotlyLayoutBase();
+  const layout = Object.assign(base, {
+    yaxis: Object.assign(base.yaxis,{ title:'Cerdos / hora' }),
+    yaxis2:{ title:'Dotación', overlaying:'y', side:'right', showgrid:false },
+    legend:{ orientation:'h', y:-0.18 },
+    shapes:[{ type:'line', xref:'paper', x0:0, x1:1, yref:'y', y0:estandar, y1:estandar, line:{color:colorVar('--c-acento'), width:1.5} }]
+  });
+  Plotly.newPlot(el, [traceDotacion, traceBruta, traceNeta], layout, PLOTLY_CFG);
+}
+
+function renderControl(turnos, estandar){
+  const el = document.getElementById('chControl');
+  if(!turnos.length){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin datos en este filtro</div>'; return; }
+  const ordenados = [...turnos].sort((a,b)=> a.fecha.localeCompare(b.fecha));
+  const xs = ordenados.map(t=>t.fecha);
+  const ys = ordenados.map(t=> safeDiv(t.cerdos, t.horasProductivas));
+  const media_ = media(ordenados.map((t,i)=>({v:ys[i]})).filter(o=>o.v!==null), o=>o.v);
+  const rangos = [];
+  for(let i=1;i<ys.length;i++){ if(ys[i]!==null && ys[i-1]!==null) rangos.push(Math.abs(ys[i]-ys[i-1])); }
+  const rMedio = rangos.length ? rangos.reduce((a,b)=>a+b,0)/rangos.length : 0;
+  const limSup = media_ + 2.66*rMedio;
+  const limInf = Math.max(0, media_ - 2.66*rMedio);
+  const colores = ys.map(v => v===null ? colorVar('--c-neutro') : (v>=limInf && v<=limSup ? colorVar('--c-positivo') : colorVar('--c-acento')));
+
+  const traceP = { x:xs, y:ys, type:'scatter', mode:'lines+markers', name:'Velocidad neta', line:{color:colorVar('--c-neutro'),width:1}, marker:{color:colores,size:6} };
+  const base = plotlyLayoutBase();
+  const layout = Object.assign(base, {
+    yaxis: Object.assign(base.yaxis,{ title:'Cerdos / hora' }),
+    showlegend:false,
+    shapes:[
+      { type:'line', xref:'paper', x0:0,x1:1, yref:'y', y0:media_, y1:media_, line:{color:colorVar('--c-base'),width:1.5} },
+      { type:'line', xref:'paper', x0:0,x1:1, yref:'y', y0:limSup, y1:limSup, line:{color:colorVar('--c-neutro'),width:1,dash:'dash'} },
+      { type:'line', xref:'paper', x0:0,x1:1, yref:'y', y0:limInf, y1:limInf, line:{color:colorVar('--c-neutro'),width:1,dash:'dash'} },
+      { type:'line', xref:'paper', x0:0,x1:1, yref:'y', y0:estandar, y1:estandar, line:{color:colorVar('--c-acento'),width:1.5} }
+    ]
+  });
+  Plotly.newPlot(el, [traceP], layout, PLOTLY_CFG);
+}
+
+function renderPareto(turnos){
+  const el = document.getElementById('chPareto');
+  if(!turnos.length){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin datos en este filtro</div>'; return; }
+  const horasPorMotivo = new Map();
+  turnos.forEach(t=>{
+    const totalParas = (t.parasNoPlanificadas||0) + (t.parasPlanificadas||0);
+    if(totalParas<=0) return;
+    if(t.motivos.length===0){
+      horasPorMotivo.set('Sin especificar', (horasPorMotivo.get('Sin especificar')||0) + totalParas);
+    } else {
+      const porMotivo = totalParas / t.motivos.length;
+      t.motivos.forEach(m=> horasPorMotivo.set(m, (horasPorMotivo.get(m)||0) + porMotivo));
+    }
+  });
+  const entries = [...horasPorMotivo.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(entries.length===0){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin paradas registradas en este filtro</div>'; return; }
+  const totalHoras = entries.reduce((s,e)=>s+e[1],0);
+  let acum = 0;
+  const pctAcum = [];
+  const esVital = [];
+  entries.forEach(e=>{
+    esVital.push((acum/totalHoras) < 0.8);
+    acum += e[1];
+    pctAcum.push(acum/totalHoras);
+  });
+  const barColores = esVital.map(v => v ? colorVar('--c-acento') : colorVar('--c-neutro'));
+
+  const traceBar = { x: entries.map(e=>e[0]), y: entries.map(e=>e[1]), type:'bar', name:'Horas perdidas', marker:{color:barColores} };
+  const traceLine = { x: entries.map(e=>e[0]), y: pctAcum.map(p=>p*100), type:'scatter', mode:'lines+markers', name:'% acumulado', yaxis:'y2', line:{color:colorVar('--c-base')} };
+  const base = plotlyLayoutBase();
+  const layout = Object.assign(base, {
+    yaxis: Object.assign(base.yaxis,{ title:'Horas' }),
+    yaxis2:{ title:'% acumulado', overlaying:'y', side:'right', range:[0,105], showgrid:false },
+    legend:{ orientation:'h', y:-0.35 },
+    margin:{ l:50,r:40,t:20,b:90 }
+  });
+  Plotly.newPlot(el, [traceBar, traceLine], layout, PLOTLY_CFG);
+}
+
+function renderDotacion(turnos, estandar){
+  const el = document.getElementById('chDotacion');
+  const porPersonal = agrupar(turnos.filter(t=>t.personal>0), t=>t.personal);
+  const grupos = [...porPersonal.entries()].filter(([,g])=>g.length>=3).sort((a,b)=>a[0]-b[0]);
+  if(grupos.length===0){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin grupos con ≥3 turnos en este filtro</div>'; return; }
+  const xs=[], ys=[];
+  grupos.forEach(([p,g])=>{ g.forEach(t=>{ const v = safeDiv(t.cerdos,t.horasProductivas); if(v!==null){ xs.push(String(p)); ys.push(v);} }); });
+  const trace = { x:xs, y:ys, type:'box', name:'Cerdos/hora', marker:{color:colorVar('--c-base')}, boxpoints:false };
+  const base = plotlyLayoutBase();
+  const layout = Object.assign(base, {
+    xaxis: Object.assign(base.xaxis,{ title:'Personal en turno', type:'category', categoryorder:'category ascending' }),
+    yaxis: Object.assign(base.yaxis,{ title:'Cerdos / hora' }),
+    showlegend:false,
+    shapes:[{ type:'line', xref:'paper', x0:0,x1:1, yref:'y', y0:estandar, y1:estandar, line:{color:colorVar('--c-acento'),width:1.5} }]
+  });
+  Plotly.newPlot(el, [trace], layout, PLOTLY_CFG);
+}
+
+function renderDefectos(turnos, estandar){
+  const el = document.getElementById('chDefectos');
+  if(!turnos.length){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin datos en este filtro</div>'; return; }
+  const pts = turnos.map(t=>({ x: safeDiv(t.cerdos,t.horasProductivas), y: safeDiv(t.defectosProceso,t.cerdos) }))
+    .filter(p=>p.x!==null && p.y!==null);
+  const colores = pts.map(p => p.y > 0.03 ? colorVar('--c-acento') : colorVar('--c-base'));
+  const traceScatter = { x:pts.map(p=>p.x), y:pts.map(p=>p.y*100), type:'scatter', mode:'markers', name:'Turnos', marker:{color:colores, size:7, opacity:0.75} };
+
+  const ordenados = [...pts].sort((a,b)=>a.x-b.x);
+  const nBins = Math.max(1, Math.min(15, Math.round(ordenados.length/5)));
+  const binSize = Math.ceil(ordenados.length / nBins) || 1;
+  const tendX=[], tendY=[];
+  for(let i=0;i<ordenados.length;i+=binSize){
+    const grupo = ordenados.slice(i, i+binSize);
+    tendX.push(media(grupo,g=>g.x));
+    tendY.push(media(grupo,g=>g.y)*100);
+  }
+  const traceTend = { x:tendX, y:tendY, type:'scatter', mode:'lines', name:'Tendencia', line:{color:colorVar('--c-neutro'), width:2, shape:'spline'} };
+
+  const base = plotlyLayoutBase();
+  const layout = Object.assign(base, {
+    xaxis: Object.assign(base.xaxis,{ title:'Velocidad neta (cerdos/hora)' }),
+    yaxis: Object.assign(base.yaxis,{ title:'Tasa de defecto (%)' }),
+    legend:{ orientation:'h', y:-0.2 },
+    shapes:[{ type:'line', xref:'x', x0:estandar, x1:estandar, yref:'paper', y0:0, y1:1, line:{color:colorVar('--c-acento'), width:1.5, dash:'dash'} }]
+  });
+  Plotly.newPlot(el, [traceScatter, traceTend], layout, PLOTLY_CFG);
+}
+
+function renderHeatmap(turnos, estandar){
+  const el = document.getElementById('chHeatmap');
+  if(!turnos.length){ Plotly.purge(el); el.innerHTML='<div class="msg-vacio">Sin datos en este filtro</div>'; return; }
+  const semanas = [...new Set(turnos.map(t=>t.semana))].sort((a,b)=>a-b);
+  const claves = new Map();
+  turnos.forEach(t=>{
+    const key = t.semana+'|'+t.dia;
+    if(!claves.has(key)) claves.set(key, {cerdos:0, horas:0});
+    const c = claves.get(key); c.cerdos += t.cerdos; c.horas += t.horasProductivas;
+  });
+  const z = semanas.map(s => ORDEN_DIAS.map(d=>{
+    const c = claves.get(s+'|'+d);
+    return (c && c.horas>0) ? c.cerdos/c.horas : null;
+  }));
+  const trace = {
+    type:'heatmap', x:ORDEN_DIAS, y:semanas.map(s=>`S${s}`), z,
+    colorscale: [[0, colorVar('--c-acento')], [0.5, colorVar('--c-amarillo')], [1, colorVar('--c-base')]],
+    zmid: estandar, hoverongaps:false,
+    colorbar:{ title:'cerdos/h' }
+  };
+  const base = plotlyLayoutBase();
+  const layout = Object.assign(base, { margin:{l:50,r:20,t:20,b:40} });
+  Plotly.newPlot(el, [trace], layout, PLOTLY_CFG);
+}
+
+function actualizar(){
+  leerFiltrosDeUI();
+  const turnos = aplicarFiltros();
+  const k = calcularKPIs(turnos, filtros.estandar);
+  renderKPIs(k, filtros.estandar);
+  renderCascada(k, filtros.estandar);
+  renderTendencia(turnos, filtros.estandar);
+  renderControl(turnos, filtros.estandar);
+  renderPareto(turnos);
+  renderDotacion(turnos, filtros.estandar);
+  renderDefectos(turnos, filtros.estandar);
+  renderHeatmap(turnos, filtros.estandar);
+  document.getElementById('footTurnos').textContent = `${turnos.length} turnos en el filtro actual de ${turnosRaw.length} totales`;
+}
+
+['fFechaIni','fFechaFin','fLinea','fPersonalMin','fPersonalMax','fEstandar'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', actualizar);
+});
+document.getElementById('btnReset').addEventListener('click', ()=>{ inicializarMeta(); llenarFiltros(); actualizar(); });
+document.getElementById('btnRecargar').addEventListener('click', cargarDatos);
+document.getElementById('btnTema').addEventListener('click', ()=>{
+  const root = document.documentElement;
+  const actual = root.getAttribute('data-theme');
+  const prefiereOscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  let nuevo;
+  if(!actual) nuevo = prefiereOscuro ? 'light' : 'dark';
+  else if(actual==='dark') nuevo = 'light';
+  else nuevo = 'dark';
+  root.setAttribute('data-theme', nuevo);
+  actualizar();
+});
+
+document.addEventListener('DOMContentLoaded', cargarDatos);
+if(document.readyState !== 'loading') cargarDatos();
+</script>
+</body>
+</html>
